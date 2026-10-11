@@ -10,6 +10,22 @@
   <main class="app">
     <h1 class="title">Counting</h1>
 
+    <div class="setter">
+      <input
+        id="amount"
+        class="setter__input"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        aria-label="Amount"
+      />
+      <div class="setter__actions">
+        <button id="set" class="setter__btn" type="button">Set</button>
+        <button id="add" class="setter__btn" type="button" hidden aria-label="Add">+</button>
+        <button id="subtract" class="setter__btn" type="button" hidden aria-label="Subtract">−</button>
+      </div>
+    </div>
+
     <div id="counter" class="counter" aria-live="polite"></div>
 
     <div class="controls">

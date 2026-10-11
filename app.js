@@ -31,6 +31,10 @@ const T = { hold: 380, fly: 420, settle: 70 };
 const state = reactive({ count: 0, digits: 4, negative: false });
 
 const counterEl = document.getElementById("counter");
+const amountEl = document.getElementById("amount");
+const setBtn = document.getElementById("set");
+const addBtn = document.getElementById("add");
+const subtractBtn = document.getElementById("subtract");
 
 let isAnimating = false;
 let runId = 0;
@@ -42,6 +46,13 @@ effect(() => {
   const negative = state.negative;
   if (isAnimating) return;
   renderResting(count, width, negative);
+});
+
+effect(() => {
+  const isZero = state.count === 0;
+  setBtn.hidden = !isZero;
+  addBtn.hidden = isZero;
+  subtractBtn.hidden = isZero;
 });
 
 function renderResting(count, width, negative) {
@@ -403,9 +414,41 @@ document.getElementById("reset").addEventListener("click", () => {
   renderResting(0, state.digits, state.negative);
 });
 
+function clampAmount() {
+  amountEl.maxLength = state.digits;
+  const digits = amountEl.value.replace(/\D/g, "").slice(0, state.digits);
+  if (digits !== amountEl.value) amountEl.value = digits;
+}
+
+function amountValue() {
+  return Number(amountEl.value || 0);
+}
+
+function commit(value) {
+  cancelAnimation();
+  if (value < 0 && !state.negative) value = 0;
+  state.count = value;
+  renderResting(value, state.digits, state.negative);
+}
+
+amountEl.addEventListener("input", clampAmount);
+
+setBtn.addEventListener("click", () => {
+  commit(amountValue());
+});
+
+addBtn.addEventListener("click", () => {
+  commit(state.count + amountValue());
+});
+
+subtractBtn.addEventListener("click", () => {
+  commit(state.count - amountValue());
+});
+
 document.getElementById("digits").addEventListener("change", (event) => {
   cancelAnimation();
   state.digits = Number(event.target.value);
+  clampAmount();
   renderResting(state.count, state.digits, state.negative);
 });
 

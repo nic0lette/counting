@@ -26,7 +26,7 @@ function reactive(target) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const T = { hold: 380, fly: 420, settle: 70 };
+const T = { hold: 380, fly: 420, settle: 70, step: 150 };
 
 const state = reactive({ count: 0, digits: 4, negative: false });
 
@@ -355,8 +355,11 @@ function processQueue() {
 
   isAnimating = true;
   const myRun = runId;
-  performStep(job, myRun).then(() => {
-    if (myRun === runId) isAnimating = false;
+  performStep(job, myRun).then(async () => {
+    if (myRun !== runId) return;
+    if (job.hold) await wait(job.hold);
+    if (myRun !== runId) return;
+    isAnimating = false;
     processQueue();
   });
 }
@@ -424,25 +427,34 @@ function amountValue() {
   return Number(amountEl.value || 0);
 }
 
-function commit(value) {
-  cancelAnimation();
-  if (value < 0 && !state.negative) value = 0;
-  state.count = value;
-  renderResting(value, state.digits, state.negative);
+function enqueueDelta(delta) {
+  if (!delta) return;
+  const dir = delta > 0 ? "up" : "down";
+  let remaining = Math.abs(delta);
+
+  const places = [];
+  for (let place = 1; place <= remaining; place *= 10) places.push(place);
+
+  for (const place of places) {
+    const times = Math.floor(remaining / place) % 10;
+    for (let k = 0; k < times; k++) queue.push({ place, dir, hold: T.step });
+  }
+
+  processQueue();
 }
 
 amountEl.addEventListener("input", clampAmount);
 
 setBtn.addEventListener("click", () => {
-  commit(amountValue());
+  enqueueDelta(amountValue());
 });
 
 addBtn.addEventListener("click", () => {
-  commit(state.count + amountValue());
+  enqueueDelta(amountValue());
 });
 
 subtractBtn.addEventListener("click", () => {
-  commit(state.count - amountValue());
+  enqueueDelta(-amountValue());
 });
 
 document.getElementById("digits").addEventListener("change", (event) => {

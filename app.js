@@ -219,7 +219,8 @@ async function playEvents(events, tiles, myRun) {
       const fromEl = tiles[tiles.length - 1 - event.from].digitEl;
       const toEl = tiles[tiles.length - 1 - event.to].digitEl;
       const flyer = fromEl.querySelector(".fly-one");
-      if (flyer) await flySpan(flyer, toEl);
+      const toEmpty = toEl.textContent === "";
+      if (flyer) await flySpan(flyer, toEl, !toEmpty);
       if (myRun !== runId) return;
       flyer?.remove();
       renderValue(fromEl, 0);
@@ -259,17 +260,12 @@ async function flyChip(tiles, fromLE, toLE, startFraction) {
   const animation = chip.animate(
     [
       { offset: 0, transform: "translate(-50%, -50%) translate(0, 0)", opacity: 1 },
+      { offset: 0.25, opacity: 1 },
       {
         offset: 0.5,
         transform: `translate(-50%, -50%) translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
-        opacity: 1,
       },
-      {
-        offset: 0.8,
-        transform: `translate(-50%, -50%) translate(${dx * 0.9}px, ${dy * 0.9}px) scale(0.92)`,
-        opacity: 1,
-      },
-      { offset: 0.95, opacity: 0 },
+      { offset: 0.9, opacity: 0 },
       {
         offset: 1,
         transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.85)`,
@@ -283,31 +279,39 @@ async function flyChip(tiles, fromLE, toLE, startFraction) {
   chip.remove();
 }
 
-async function flySpan(el, toEl) {
+async function flySpan(el, toEl, fade) {
   const from = el.getBoundingClientRect();
   const to = toEl.getBoundingClientRect();
   const dx = to.left + to.width / 2 - (from.left + from.width / 2);
   const dy = to.top + to.height / 2 - (from.top + from.height / 2);
   const lift = from.height * 0.6;
 
-  const animation = el.animate(
-    [
-      { offset: 0, transform: "translate(0, 0)", opacity: 1 },
-      {
-        offset: 0.5,
-        transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
-        opacity: 1,
-      },
-      {
-        offset: 0.8,
-        transform: `translate(${dx * 0.9}px, ${dy * 0.9}px) scale(0.92)`,
-        opacity: 1,
-      },
-      { offset: 0.95, opacity: 0 },
-      { offset: 1, transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 0 },
-    ],
-    { duration: T.fly, easing: "linear", fill: "forwards" }
-  );
+  const keyframes = fade
+    ? [
+        { offset: 0, transform: "translate(0, 0)", opacity: 1 },
+        { offset: 0.25, opacity: 1 },
+        {
+          offset: 0.5,
+          transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
+        },
+        { offset: 0.9, opacity: 0 },
+        { offset: 1, transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 0 },
+      ]
+    : [
+        { offset: 0, transform: "translate(0, 0)", opacity: 1 },
+        {
+          offset: 0.5,
+          transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
+          opacity: 1,
+        },
+        { offset: 1, transform: `translate(${dx}px, ${dy}px)`, opacity: 1 },
+      ];
+
+  const animation = el.animate(keyframes, {
+    duration: T.fly,
+    easing: "linear",
+    fill: "forwards",
+  });
 
   await animation.finished;
 }

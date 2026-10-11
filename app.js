@@ -258,12 +258,20 @@ async function flyChip(tiles, fromLE, toLE, startFraction) {
 
   const animation = chip.animate(
     [
-      { transform: "translate(-50%, -50%) translate(0, 0)", opacity: 1 },
+      { offset: 0, transform: "translate(-50%, -50%) translate(0, 0)", opacity: 1 },
       {
+        offset: 0.5,
         transform: `translate(-50%, -50%) translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
         opacity: 1,
       },
       {
+        offset: 0.8,
+        transform: `translate(-50%, -50%) translate(${dx * 0.9}px, ${dy * 0.9}px) scale(0.92)`,
+        opacity: 1,
+      },
+      { offset: 0.95, opacity: 0 },
+      {
+        offset: 1,
         transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.85)`,
         opacity: 0,
       },
@@ -284,12 +292,19 @@ async function flySpan(el, toEl) {
 
   const animation = el.animate(
     [
-      { transform: "translate(0, 0)", opacity: 1 },
+      { offset: 0, transform: "translate(0, 0)", opacity: 1 },
       {
+        offset: 0.5,
         transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
         opacity: 1,
       },
-      { transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 0 },
+      {
+        offset: 0.8,
+        transform: `translate(${dx * 0.9}px, ${dy * 0.9}px) scale(0.92)`,
+        opacity: 1,
+      },
+      { offset: 0.95, opacity: 0 },
+      { offset: 1, transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 0 },
     ],
     { duration: T.fly, easing: "linear", fill: "forwards" }
   );

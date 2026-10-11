@@ -86,7 +86,7 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 50%;
+  right: calc(50% + 0.2em);
   z-index: 1;
   display: grid;
   place-items: center;

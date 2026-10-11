@@ -258,6 +258,9 @@ async function playEvents(events, tiles, myRun) {
       collapseLeading(tiles);
       await wait(T.settle);
     } else if (event.type === "borrow") {
+      if (event.fromValue === 0) {
+        renderValue(tiles[tiles.length - 1 - event.from].digitEl, "");
+      }
       await flyChip(tiles, event.from, event.to, 0.5);
       if (myRun !== runId) return;
       setTile(tiles, event.from, event.fromValue);

@@ -102,6 +102,23 @@ function setTile(tiles, le, value) {
   renderValue(tiles[tiles.length - 1 - le].digitEl, value);
 }
 
+function collapseLeading(tiles) {
+  let seen = false;
+
+  for (let d = 0; d < tiles.length; d++) {
+    const el = tiles[d].digitEl;
+    const text = el.textContent;
+    if (text === "") continue;
+
+    const value = Number(text);
+    if (value !== 0) {
+      seen = true;
+    } else if (!seen && d !== tiles.length - 1) {
+      el.textContent = "";
+    }
+  }
+}
+
 function numDigits(n) {
   return n === 0 ? 1 : Math.floor(Math.log10(n)) + 1;
 }
@@ -212,9 +229,11 @@ async function playEvents(events, tiles, myRun) {
 
     if (event.type === "inc") {
       setTile(tiles, event.index, event.value);
+      collapseLeading(tiles);
       if (event.value >= 10) await wait(T.hold);
     } else if (event.type === "dec") {
       setTile(tiles, event.index, event.value);
+      collapseLeading(tiles);
     } else if (event.type === "carry") {
       const fromEl = tiles[tiles.length - 1 - event.from].digitEl;
       const toEl = tiles[tiles.length - 1 - event.to].digitEl;
@@ -225,12 +244,14 @@ async function playEvents(events, tiles, myRun) {
       flyer?.remove();
       renderValue(fromEl, 0);
       renderValue(toEl, event.toValue);
+      collapseLeading(tiles);
       await wait(T.settle);
     } else if (event.type === "borrow") {
       await flyChip(tiles, event.from, event.to, 0.5);
       if (myRun !== runId) return;
       setTile(tiles, event.from, event.fromValue);
       setTile(tiles, event.to, event.toValue);
+      collapseLeading(tiles);
       await wait(T.settle);
     }
   }

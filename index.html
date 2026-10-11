@@ -13,22 +13,27 @@
     <div id="counter" class="counter" aria-live="polite"></div>
 
     <div class="controls">
-      <button id="dec" class="control" type="button" aria-label="Decrease">−</button>
       <button id="reset" class="control control--reset" type="button">Reset</button>
-      <button id="inc" class="control" type="button" aria-label="Increase">+</button>
     </div>
 
-    <label class="settings">
-      Digits
-      <select id="digits" class="settings__select">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4" selected>4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
-    </label>
+    <div class="settings">
+      <label class="settings__field">
+        Digits
+        <select id="digits" class="settings__select">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </label>
+
+      <label class="settings__field">
+        <input id="negative" class="settings__checkbox" type="checkbox" />
+        Allow negative
+      </label>
+    </div>
   </main>
 
   <script src="app.js"></script>

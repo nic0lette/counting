@@ -37,7 +37,16 @@ body {
 
 .counter {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
+  font-size: clamp(2.5rem, 11vw, 6rem);
+}
+
+.place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25em;
 }
 
 .digit {
@@ -47,10 +56,46 @@ body {
   height: 1.6em;
   border-radius: 0.28em;
   background: var(--tile);
-  font-size: clamp(2.5rem, 12vw, 6rem);
+  font-size: 1em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+
+.digit--sign {
+  background: transparent;
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 1.6em;
+  height: 0.72em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #c4c4cc;
+  font-size: 0.55em;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.05s ease, color 0.15s ease;
+}
+
+.step:hover {
+  color: #9a9aa6;
+}
+
+.step:active {
+  transform: scale(0.9);
+}
+
+.step[data-dir="down"] {
+  transform: translateY(-0.64em);
+}
+
+.step[data-dir="down"]:active {
+  transform: translateY(-0.64em) scale(0.9);
 }
 
 .controls {
@@ -86,10 +131,23 @@ body {
 .settings {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1.5rem;
   font-size: 1rem;
   font-weight: 600;
   color: #7a7a86;
+}
+
+.settings__field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings__checkbox {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #7a7a86;
+  cursor: pointer;
 }
 
 .settings__select {

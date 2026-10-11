@@ -78,20 +78,28 @@ function paint(digits, tiles) {
 
     let text;
     if (!anyNonzero) {
-      text = le === 0 ? "0" : "";
+      text = le === 0 ? 0 : "";
     } else if (value === 0 && !seen) {
       text = "";
     } else {
-      text = String(value);
+      text = value;
     }
 
     if (value !== 0) seen = true;
-    tiles[d].digitEl.textContent = text;
+    renderValue(tiles[d].digitEl, text);
+  }
+}
+
+function renderValue(el, value) {
+  if (value === 10) {
+    el.innerHTML = '<span class="fly-one">1</span><span class="digit-zero">0</span>';
+  } else {
+    el.textContent = value === "" ? "" : String(value);
   }
 }
 
 function setTile(tiles, le, value) {
-  tiles[tiles.length - 1 - le].digitEl.textContent = String(value);
+  renderValue(tiles[tiles.length - 1 - le].digitEl, value);
 }
 
 function numDigits(n) {
@@ -208,10 +216,14 @@ async function playEvents(events, tiles, myRun) {
     } else if (event.type === "dec") {
       setTile(tiles, event.index, event.value);
     } else if (event.type === "carry") {
-      await flyChip(tiles, event.from, event.to, 0.38);
+      const fromEl = tiles[tiles.length - 1 - event.from].digitEl;
+      const toEl = tiles[tiles.length - 1 - event.to].digitEl;
+      const flyer = fromEl.querySelector(".fly-one");
+      if (flyer) await flySpan(flyer, toEl);
       if (myRun !== runId) return;
-      setTile(tiles, event.from, 0);
-      setTile(tiles, event.to, event.toValue);
+      flyer?.remove();
+      renderValue(fromEl, 0);
+      renderValue(toEl, event.toValue);
       await wait(T.settle);
     } else if (event.type === "borrow") {
       await flyChip(tiles, event.from, event.to, 0.5);
@@ -261,6 +273,28 @@ async function flyChip(tiles, fromLE, toLE, startFraction) {
 
   await animation.finished;
   chip.remove();
+}
+
+async function flySpan(el, toEl) {
+  const from = el.getBoundingClientRect();
+  const to = toEl.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  const lift = from.height * 0.6;
+
+  const animation = el.animate(
+    [
+      { transform: "translate(0, 0)", opacity: 1 },
+      {
+        transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
+        opacity: 1,
+      },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 0 },
+    ],
+    { duration: T.fly, easing: "linear", fill: "forwards" }
+  );
+
+  await animation.finished;
 }
 
 function processQueue() {

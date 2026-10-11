@@ -24,29 +24,258 @@ function reactive(target) {
   });
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const T = { hold: 380, fly: 420, settle: 70 };
+
 const state = reactive({ count: 0, digits: 4, negative: false });
 
 const counterEl = document.getElementById("counter");
 
+let isAnimating = false;
+let runId = 0;
+const queue = [];
+
 effect(() => {
-  renderCounter(state.count, state.digits);
+  const count = state.count;
+  const width = state.digits;
+  const negative = state.negative;
+  if (isAnimating) return;
+  renderResting(count, width, negative);
 });
 
-function renderCounter(value, width) {
-  const negative = value < 0;
-  const digits = String(Math.abs(value)).split("");
-  const padCount = Math.max(0, width - digits.length);
-  const slots = [...Array(padCount).fill(null), ...digits];
+function renderResting(count, width, negative) {
+  const value = Math.abs(count);
+  const length = Math.max(width, numDigits(value));
+  const tiles = buildTiles(length, negative && count < 0);
+  paint(toDigits(value, length), tiles);
+}
 
-  const children = [];
-  if (negative) children.push(createSign());
+function buildTiles(length, sign) {
+  const nodes = [];
+  if (sign) nodes.push(createSign());
 
-  slots.forEach((digit, index) => {
-    const place = 10 ** (slots.length - 1 - index);
-    children.push(createPlace(digit, place));
+  const tiles = [];
+  for (let d = 0; d < length; d++) {
+    const place = 10 ** (length - 1 - d);
+    const node = createPlace(place);
+    nodes.push(node);
+    tiles.push({ node, digitEl: node.querySelector(".digit") });
+  }
+
+  counterEl.replaceChildren(...nodes);
+  return tiles;
+}
+
+function paint(digits, tiles) {
+  const length = tiles.length;
+  const anyNonzero = digits.some((v) => v !== 0);
+  let seen = false;
+
+  for (let d = 0; d < length; d++) {
+    const le = length - 1 - d;
+    const value = digits[le];
+
+    let text;
+    if (!anyNonzero) {
+      text = le === 0 ? "0" : "";
+    } else if (value === 0 && !seen) {
+      text = "";
+    } else {
+      text = String(value);
+    }
+
+    if (value !== 0) seen = true;
+    tiles[d].digitEl.textContent = text;
+  }
+}
+
+function setTile(tiles, le, value) {
+  tiles[tiles.length - 1 - le].digitEl.textContent = String(value);
+}
+
+function numDigits(n) {
+  return n === 0 ? 1 : Math.floor(Math.log10(n)) + 1;
+}
+
+function toDigits(n, length) {
+  const digits = new Array(length).fill(0);
+  for (let i = 0; i < length; i++) {
+    digits[i] = n % 10;
+    n = Math.floor(n / 10);
+  }
+  return digits;
+}
+
+function toValue(digits) {
+  return digits.reduce((sum, v, i) => sum + v * 10 ** i, 0);
+}
+
+function placeToIndex(place) {
+  return Math.round(Math.log10(place));
+}
+
+function planAdd(start, index) {
+  const digits = start.slice();
+  const events = [];
+
+  digits[index] += 1;
+  events.push({ type: "inc", index, value: digits[index] });
+
+  let j = index;
+  while (digits[j] >= 10) {
+    if (j + 1 >= digits.length) digits.push(0);
+    digits[j + 1] += 1;
+    digits[j] -= 10;
+    events.push({
+      type: "carry",
+      from: j,
+      to: j + 1,
+      toValue: digits[j + 1],
+    });
+    j += 1;
+  }
+
+  return { final: digits, events };
+}
+
+function planSub(start, index) {
+  const digits = start.slice();
+  const events = [];
+
+  if (digits[index] > 0) {
+    digits[index] -= 1;
+    events.push({ type: "dec", index, value: digits[index] });
+    return { final: digits, events };
+  }
+
+  let k = index + 1;
+  while (k < digits.length && digits[k] === 0) k += 1;
+  if (k >= digits.length) return { final: digits, events, noop: true };
+
+  for (let j = k; j > index; j--) {
+    digits[j] -= 1;
+    digits[j - 1] += 10;
+    events.push({
+      type: "borrow",
+      from: j,
+      to: j - 1,
+      fromValue: digits[j],
+      toValue: digits[j - 1],
+    });
+  }
+
+  digits[index] -= 1;
+  events.push({ type: "dec", index, value: digits[index] });
+
+  return { final: digits, events };
+}
+
+async function performStep({ place, dir }, myRun) {
+  const start = state.count;
+  const next = start + (dir === "up" ? place : -place);
+
+  if (start < 0 || next < 0) {
+    const value = next < 0 && !state.negative ? 0 : next;
+    state.count = value;
+    renderResting(value, state.digits, state.negative);
+    return;
+  }
+
+  const width = state.digits;
+  const length = Math.max(width, numDigits(Math.max(start, next)));
+  const startDigits = toDigits(start, length);
+  const index = placeToIndex(place);
+  const plan = dir === "up" ? planAdd(startDigits, index) : planSub(startDigits, index);
+  if (plan.noop) return;
+
+  const tiles = buildTiles(length, false);
+  paint(startDigits, tiles);
+
+  await playEvents(plan.events, tiles, myRun);
+  if (myRun !== runId) return;
+
+  const value = toValue(plan.final);
+  state.count = value;
+  renderResting(value, width, state.negative);
+}
+
+async function playEvents(events, tiles, myRun) {
+  for (const event of events) {
+    if (myRun !== runId) return;
+
+    if (event.type === "inc") {
+      setTile(tiles, event.index, event.value);
+      if (event.value >= 10) await wait(T.hold);
+    } else if (event.type === "dec") {
+      setTile(tiles, event.index, event.value);
+    } else if (event.type === "carry") {
+      setTile(tiles, event.from, 0);
+      await flyChip(tiles, event.from, event.to);
+      if (myRun !== runId) return;
+      setTile(tiles, event.to, event.toValue);
+      await wait(T.settle);
+    } else if (event.type === "borrow") {
+      setTile(tiles, event.from, event.fromValue);
+      await flyChip(tiles, event.from, event.to);
+      if (myRun !== runId) return;
+      setTile(tiles, event.to, event.toValue);
+      await wait(T.settle);
+    }
+  }
+}
+
+async function flyChip(tiles, fromLE, toLE) {
+  const fromEl = tiles[tiles.length - 1 - fromLE].digitEl;
+  const toEl = tiles[tiles.length - 1 - toLE].digitEl;
+
+  const base = counterEl.getBoundingClientRect();
+  const from = fromEl.getBoundingClientRect();
+  const to = toEl.getBoundingClientRect();
+
+  const startX = from.left - base.left + from.width * 0.38;
+  const startY = from.top - base.top + from.height / 2;
+  const dx = to.left - base.left + to.width / 2 - startX;
+  const dy = to.top - base.top + to.height / 2 - startY;
+  const lift = from.height * 0.6;
+
+  const chip = document.createElement("span");
+  chip.className = "carry-chip";
+  chip.textContent = "1";
+  chip.style.left = `${startX}px`;
+  chip.style.top = `${startY}px`;
+  counterEl.appendChild(chip);
+
+  const animation = chip.animate(
+    [
+      { transform: "translate(-50%, -50%) translate(0, 0)", opacity: 1 },
+      {
+        transform: `translate(-50%, -50%) translate(${dx * 0.5}px, ${dy * 0.5 - lift}px)`,
+        opacity: 1,
+      },
+      {
+        transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.85)`,
+        opacity: 0,
+      },
+    ],
+    { duration: T.fly, easing: "linear", fill: "forwards" }
+  );
+
+  await animation.finished;
+  chip.remove();
+}
+
+function processQueue() {
+  if (isAnimating) return;
+  const job = queue.shift();
+  if (!job) return;
+
+  isAnimating = true;
+  const myRun = runId;
+  performStep(job, myRun).then(() => {
+    if (myRun === runId) isAnimating = false;
+    processQueue();
   });
-
-  counterEl.replaceChildren(...children);
 }
 
 function createSign() {
@@ -56,24 +285,19 @@ function createSign() {
   return el;
 }
 
-function createPlace(digit, place) {
+function createPlace(place) {
   const node = document.createElement("div");
   node.className = "place";
   node.dataset.place = String(place);
 
-  node.append(
-    createStep("up", place),
-    createDigit(digit),
-    createStep("down", place)
-  );
+  node.append(createStep("up", place), createDigit(), createStep("down", place));
 
   return node;
 }
 
-function createDigit(digit) {
+function createDigit() {
   const el = document.createElement("span");
   el.className = "digit";
-  el.textContent = digit ?? "";
   return el;
 }
 
@@ -83,36 +307,39 @@ function createStep(dir, place) {
   el.type = "button";
   el.dataset.dir = dir;
   el.textContent = dir === "up" ? "+" : "−";
-  el.setAttribute(
-    "aria-label",
-    `${dir === "up" ? "Add" : "Subtract"} ${place}`
-  );
+  el.setAttribute("aria-label", `${dir === "up" ? "Add" : "Subtract"} ${place}`);
   return el;
-}
-
-function step(place, dir) {
-  const delta = dir === "up" ? place : -place;
-  let next = state.count + delta;
-  if (!state.negative && next < 0) next = 0;
-  state.count = next;
 }
 
 counterEl.addEventListener("click", (event) => {
   const button = event.target.closest(".step");
   if (!button) return;
   const place = Number(button.closest(".place").dataset.place);
-  step(place, button.dataset.dir);
+  queue.push({ place, dir: button.dataset.dir });
+  processQueue();
 });
 
+function cancelAnimation() {
+  queue.length = 0;
+  runId += 1;
+  isAnimating = false;
+}
+
 document.getElementById("reset").addEventListener("click", () => {
+  cancelAnimation();
   state.count = 0;
+  renderResting(0, state.digits, state.negative);
 });
 
 document.getElementById("digits").addEventListener("change", (event) => {
+  cancelAnimation();
   state.digits = Number(event.target.value);
+  renderResting(state.count, state.digits, state.negative);
 });
 
 document.getElementById("negative").addEventListener("change", (event) => {
+  cancelAnimation();
   state.negative = event.target.checked;
   if (!state.negative && state.count < 0) state.count = 0;
+  renderResting(state.count, state.digits, state.negative);
 });

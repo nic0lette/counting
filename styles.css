@@ -36,10 +36,25 @@ body {
 }
 
 .counter {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.35rem;
   font-size: clamp(2.5rem, 11vw, 6rem);
+}
+
+.carry-chip {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--tile-text);
+  pointer-events: none;
+  will-change: transform;
 }
 
 .place {

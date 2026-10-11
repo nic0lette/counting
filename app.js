@@ -153,20 +153,18 @@ function planSub(start, index) {
   while (k < digits.length && digits[k] === 0) k += 1;
   if (k >= digits.length) return { final: digits, events, noop: true };
 
+  digits[k] -= 1;
   for (let j = k; j > index; j--) {
-    digits[j] -= 1;
-    digits[j - 1] += 10;
+    const fromValue = digits[j];
+    digits[j - 1] = 9;
     events.push({
       type: "borrow",
       from: j,
       to: j - 1,
-      fromValue: digits[j],
-      toValue: digits[j - 1],
+      fromValue,
+      toValue: 9,
     });
   }
-
-  digits[index] -= 1;
-  events.push({ type: "dec", index, value: digits[index] });
 
   return { final: digits, events };
 }
@@ -210,22 +208,22 @@ async function playEvents(events, tiles, myRun) {
     } else if (event.type === "dec") {
       setTile(tiles, event.index, event.value);
     } else if (event.type === "carry") {
-      setTile(tiles, event.from, 0);
-      await flyChip(tiles, event.from, event.to);
+      await flyChip(tiles, event.from, event.to, 0.38);
       if (myRun !== runId) return;
+      setTile(tiles, event.from, 0);
       setTile(tiles, event.to, event.toValue);
       await wait(T.settle);
     } else if (event.type === "borrow") {
-      setTile(tiles, event.from, event.fromValue);
-      await flyChip(tiles, event.from, event.to);
+      await flyChip(tiles, event.from, event.to, 0.5);
       if (myRun !== runId) return;
+      setTile(tiles, event.from, event.fromValue);
       setTile(tiles, event.to, event.toValue);
       await wait(T.settle);
     }
   }
 }
 
-async function flyChip(tiles, fromLE, toLE) {
+async function flyChip(tiles, fromLE, toLE, startFraction) {
   const fromEl = tiles[tiles.length - 1 - fromLE].digitEl;
   const toEl = tiles[tiles.length - 1 - toLE].digitEl;
 
@@ -233,7 +231,7 @@ async function flyChip(tiles, fromLE, toLE) {
   const from = fromEl.getBoundingClientRect();
   const to = toEl.getBoundingClientRect();
 
-  const startX = from.left - base.left + from.width * 0.38;
+  const startX = from.left - base.left + from.width * startFraction;
   const startY = from.top - base.top + from.height / 2;
   const dx = to.left - base.left + to.width / 2 - startX;
   const dy = to.top - base.top + to.height / 2 - startY;

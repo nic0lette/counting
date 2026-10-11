@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Counting</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <h1 class="title">Counting</h1>
+
+    <div id="counter" class="counter" aria-live="polite"></div>
+
+    <div class="controls">
+      <button id="dec" class="control" type="button" aria-label="Decrease">−</button>
+      <button id="reset" class="control control--reset" type="button">Reset</button>
+      <button id="inc" class="control" type="button" aria-label="Increase">+</button>
+    </div>
+
+    <label class="settings">
+      Digits
+      <select id="digits" class="settings__select">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+    </label>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
